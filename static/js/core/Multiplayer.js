@@ -27,7 +27,7 @@ Multiplayer.prototype = {
     draw_ui: function() {
         var self = this;
         var box = $('<div id="network"></div>');
-        box.append('<div id="net-controls"><button id="net-host">Host Game</button><button id="net-copy">Copy Invite</button><input id="net-link" readonly="readonly" placeholder="Invite link" /></div>');
+        box.append('<div id="net-controls"><button id="net-host">Host Game</button><button id="net-copy" class="online-only">Copy Invite</button><input id="net-link" class="online-only" readonly="readonly" placeholder="Invite link" /></div>');
         box.append('<div id="net-meta"><span id="net-players">Joined: 1/4</span> <span id="net-status">Offline hotseat mode.</span></div>');
         $('#content').prepend(box);
 
@@ -72,6 +72,7 @@ Multiplayer.prototype = {
         var self = this;
         this.role = 'host';
         this.localIndex = 0;
+        $('#network').addClass('online');
         this.peer = new Peer();
         this.peer.on('open', function(id) {
             var joinUrl = location.href.replace(/#.*$/, '') + '#join=' + encodeURIComponent(id);
@@ -95,6 +96,7 @@ Multiplayer.prototype = {
         }
         var self = this;
         this.role = 'guest';
+        $('#network').addClass('online');
         set_touch_start_label('Ready?');
         this.peer = new Peer();
         this.peer.on('open', function() {

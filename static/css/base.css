@@ -51,6 +51,12 @@ h1.active {
     align-items: stretch;
     gap: 8px;
 }
+#network:not(.online) #net-controls {
+    display: block;
+}
+#network:not(.online) .online-only {
+    display: none;
+}
 #network button {
     background: #333;
     color: #eee;

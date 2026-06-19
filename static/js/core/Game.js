@@ -25,6 +25,12 @@ function set_touch_start_label(label) {
     $('#touch-start').text(label).attr('aria-label', label);
 }
 
+function set_touch_start_visible(isVisible) {
+    $('#touch-start')
+        .css('visibility', isVisible ? 'visible' : 'hidden')
+        .attr('aria-hidden', isVisible ? 'false' : 'true');
+}
+
 function set_touch_turn_color(player) {
     if(!player) return;
     $('#touch-left, #touch-right').css({
@@ -214,7 +220,7 @@ LineRageGame.prototype = {
     resume: function() {
         hud.hide();
         message("");
-        $("#touch-start").hide();
+        set_touch_start_visible(false);
         this.is_paused = false;
         this.continue_fn = this.pause;
         this.is_fresh = false;
@@ -229,7 +235,7 @@ LineRageGame.prototype = {
         this.is_ended = true;
         this.is_paused = true;
         set_touch_start_label('Ready?');
-        $("#touch-start").show();
+        set_touch_start_visible(true);
 
         var self = this;
         this.continue_fn = function() {
@@ -254,7 +260,7 @@ LineRageGame.prototype = {
         this.is_ended = false;
         set_touch_start_label('Ready?');
         set_touch_turn_color(this.players[0]);
-        $("#touch-start").show();
+        set_touch_start_visible(true);
         this.continue_fn = this.pause;
 
         this.is_fresh = true;

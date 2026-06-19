@@ -27,11 +27,8 @@ Multiplayer.prototype = {
     draw_ui: function() {
         var self = this;
         var box = $('<div id="network"></div>');
-        box.append('<button id="net-host">Host Game</button> ');
-        box.append('<button id="net-copy">Copy Invite</button>');
-        box.append('<input id="net-link" readonly="readonly" placeholder="Invite link" /> ');
-        box.append('<div id="net-players">Joined: 1/4</div>');
-        box.append('<div id="net-status">Offline hotseat mode.</div>');
+        box.append('<div id="net-controls"><button id="net-host">Host Game</button><button id="net-copy">Copy Invite</button><input id="net-link" readonly="readonly" placeholder="Invite link" /></div>');
+        box.append('<div id="net-meta"><span id="net-players">Joined: 1/4</span> <span id="net-status">Offline hotseat mode.</span></div>');
         $('#content').prepend(box);
 
         $('#net-host').click(function() { self.host(); });
@@ -322,7 +319,7 @@ Multiplayer.prototype = {
         } else if(msg.type == 'resume') {
             hud.hide();
             message('');
-            $('#touch-start').hide();
+            set_touch_start_visible(false);
             this.apply_snapshot(msg.snapshot);
             var player = this.game.players[this.localIndex];
             var name = player ? player.name : ('Player ' + (this.localIndex + 1));
@@ -334,7 +331,7 @@ Multiplayer.prototype = {
             this.apply_snapshot(msg.snapshot);
             this.game.is_paused = true;
             set_touch_start_label('Ready?');
-            $('#touch-start').show();
+            set_touch_start_visible(true);
         } else if(msg.type == 'tick') {
             this.draw_segments(msg.segments);
             this.apply_snapshot(msg.snapshot);

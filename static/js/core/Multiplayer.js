@@ -43,6 +43,18 @@ Multiplayer.prototype = {
     player_label: function(count) {
         return count == 1 ? '1 player' : count + ' players';
     },
+    random_token: function() {
+        var alphabet = 'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        var token = '';
+        if(window.crypto && window.crypto.getRandomValues) {
+            var bytes = new Uint8Array(8);
+            window.crypto.getRandomValues(bytes);
+            for(var i=0; i<bytes.length; i++) token += alphabet.charAt(bytes[i] % alphabet.length);
+        } else {
+            for(var j=0; j<8; j++) token += alphabet.charAt(Math.floor(Math.random() * alphabet.length));
+        }
+        return token;
+    },
     update_lobby: function(extra) {
         var count = this.joined_count();
         $('#net-players').html('Joined: ' + count + '/' + this.maxPlayers);
@@ -56,12 +68,19 @@ Multiplayer.prototype = {
     copy_link: function() {
         var link = $('#net-link').val();
         if(!link) return;
+        var self = this;
+        var copied = function() {
+            $('#net-copy').text('Copied');
+            self.set_status('Invite copied.');
+        };
         if(navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(link);
-            this.update_lobby('Invite copied.');
+            navigator.clipboard.writeText(link).then(copied, function() {
+                self.set_status('Copy failed. Select the invite link.');
+            });
         } else {
             $('#net-link')[0].select();
-            this.set_status('Invite selected.');
+            if(document.execCommand && document.execCommand('copy')) copied();
+            else this.set_status('Invite selected.');
         }
     },
     host: function() {
@@ -73,7 +92,8 @@ Multiplayer.prototype = {
         this.role = 'host';
         this.localIndex = 0;
         $('#network').addClass('online');
-        this.peer = new Peer();
+        $('#net-copy').text('Copy Invite');
+        this.peer = new Peer(this.random_token());
         this.peer.on('open', function(id) {
             var joinUrl = location.href.replace(/#.*$/, '') + '#join=' + encodeURIComponent(id);
             $('#net-link').val(joinUrl);
@@ -83,7 +103,10 @@ Multiplayer.prototype = {
             });
         });
         this.peer.on('connection', function(conn) { self.accept(conn); });
-        this.peer.on('error', function(err) { self.set_status('Host error: ' + err); });
+        this.peer.on('error', function(err) {
+            if(err && err.type == 'unavailable-id') self.set_status('Room token taken. Try Host Game again.');
+            else self.set_status('Host error: ' + err);
+        });
     },
     autojoin_from_hash: function() {
         var m = String(location.hash || '').match(/join=([^&]+)/);
@@ -245,7 +268,14 @@ Multiplayer.prototype = {
         if(this.role == 'host') this.broadcast({type: 'pause'});
     },
     on_end: function() {
-        if(this.role == 'host') this.broadcast({type: 'end', snapshot: this.snapshot()});
+        if(this.role == 'host') {
+            var self = this;
+            setTimeout(function() {
+                set_touch_start_label('Start');
+                self.game.continue_fn = function() { return self.start_game(); };
+                self.broadcast({type: 'end', snapshot: self.snapshot(), message: $('#messages').html()});
+            }, 0);
+        }
     },
     after_tick: function(segments) {
         if(this.role != 'host' || !segments || !segments.length) return;
@@ -334,6 +364,7 @@ Multiplayer.prototype = {
             this.game.is_paused = true;
             set_touch_start_label('Ready?');
             set_touch_start_visible(true);
+            if(msg.message) message(msg.message);
         } else if(msg.type == 'tick') {
             this.draw_segments(msg.segments);
             this.apply_snapshot(msg.snapshot);

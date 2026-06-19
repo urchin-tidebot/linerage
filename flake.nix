@@ -29,8 +29,7 @@
             src = pkgs.lib.cleanSource ./.;
 
             nativeBuildInputs = [
-              pkgs.jdk
-              pkgs.zip
+              pkgs.python3
             ];
 
             buildPhase = ''
@@ -101,8 +100,6 @@
       devShells = forAllSystems (pkgs: {
         default = pkgs.mkShell {
           packages = [
-            pkgs.jdk
-            pkgs.zip
             pkgs.python3
             pkgs.nodejs
             pkgs.chromium
@@ -112,7 +109,7 @@
           shellHook = ''
             echo "LineRage dev shell"
             echo "  nix run .#serve-dev -- [port]    # serve ./static"
-            echo "  nix build                        # build packaged site + linerage.zip"
+            echo "  nix build                        # bundle JS and build packaged site + linerage.zip"
             echo "  nix run .#serve-built -- [port]  # serve the Nix-built package"
           '';
         };

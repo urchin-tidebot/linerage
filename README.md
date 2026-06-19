@@ -1,10 +1,10 @@
 # LineRage
 
-LineRage is an old-school browser line-racing game. This branch adds PeerJS-based online multiplayer via join links.
+LineRage is an old-school browser line-racing game. It includes PeerJS-based online multiplayer via join links.
 
 ## Development with Nix
 
-Enter a reproducible shell with Java, zip, Python, Node.js, Chromium, and Nix formatting tools:
+Enter a reproducible shell with Python, Node.js, Chromium, and Nix formatting tools:
 
 ```sh
 nix develop
@@ -43,9 +43,9 @@ Run flake checks:
 nix flake check
 ```
 
-## Legacy build command
+## Build command
 
-If you are already inside a shell with `java` and `zip` available, the old build script still works:
+If you are already inside a shell with `python3` available, the build script can be run directly:
 
 ```sh
 mkdir -p build

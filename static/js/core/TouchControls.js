@@ -36,7 +36,7 @@ TouchControls.prototype = {
     },
     start_or_pause: function() {
         if(this.game.multiplayer && this.game.multiplayer.role == 'guest') {
-            message('Waiting for host to start.');
+            message('Waiting.');
             return false;
         }
         return this.game.continue_fn();

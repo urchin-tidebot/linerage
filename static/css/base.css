@@ -271,19 +271,21 @@ h1.active {
     }
     #network {
         display: grid;
-        grid-template-columns: 1fr auto;
+        grid-template-columns: 1fr 1fr;
         gap: 6px;
         width: calc(100vw - 16px);
         max-width: none;
     }
-    #net-host {
-        grid-column: 1 / -1;
-    }
-    #net-link {
+    #net-host, #net-copy {
         width: 100%;
     }
-    #net-status {
+    #net-link {
         grid-column: 1 / -1;
+        width: 100%;
+    }
+    #net-players, #net-status {
+        grid-column: 1 / -1;
+        overflow-wrap: anywhere;
     }
     #game {
         width: 100vw;

@@ -11,7 +11,7 @@ function Multiplayer(game) {
     this.onlineLevel = new Level({
         "name": "Online Deathmatch",
         "url": "levels/deathmatch/blank.png",
-        "description": "<p>Online deathmatch: each browser controls one line with Left/Right arrows or the on-screen buttons. Host creates a join link and starts with Space or Start.</p>",
+        "description": "<p>Online: turn with arrows or touch. Host shares an invite and starts when ready.</p>",
         "is_deathmatch": true,
         "max_players": 4,
         "min_players": 1
@@ -27,10 +27,10 @@ Multiplayer.prototype = {
     draw_ui: function() {
         var self = this;
         var box = $('<div id="network"></div>');
-        box.append('<button id="net-host">Host online game</button> ');
-        box.append('<input id="net-link" readonly="readonly" placeholder="Join link will appear here" /> ');
-        box.append('<button id="net-copy">Copy link</button>');
-        box.append('<div id="net-players">Players joined: 1/4</div>');
+        box.append('<button id="net-host">Host Game</button> ');
+        box.append('<button id="net-copy">Copy Invite</button>');
+        box.append('<input id="net-link" readonly="readonly" placeholder="Invite link" /> ');
+        box.append('<div id="net-players">Joined: 1/4</div>');
         box.append('<div id="net-status">Offline hotseat mode.</div>');
         $('#content').prepend(box);
 
@@ -44,14 +44,14 @@ Multiplayer.prototype = {
         return this.role == 'host' ? this.conns.length + 1 : this.game.num_players;
     },
     player_label: function(count) {
-        return count == 1 ? '1 player joined' : count + ' players joined';
+        return count == 1 ? '1 player' : count + ' players';
     },
     update_lobby: function(extra) {
         var count = this.joined_count();
-        $('#net-players').html('Players joined: ' + count + '/' + this.maxPlayers);
+        $('#net-players').html('Joined: ' + count + '/' + this.maxPlayers);
         if(this.role == 'host') {
             set_touch_start_label('Start');
-            this.set_status('Hosting as Red Player. ' + this.player_label(count) + '. Share the join link, then press Space or Start.');
+            this.set_status('Host: Red. Share invite, then Start.');
         } else if(extra) {
             this.set_status(extra);
         }
@@ -61,10 +61,10 @@ Multiplayer.prototype = {
         if(!link) return;
         if(navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(link);
-            this.update_lobby('Join link copied. Waiting for players...');
+            this.update_lobby('Invite copied.');
         } else {
             $('#net-link')[0].select();
-            this.set_status('Copy the selected join link.');
+            this.set_status('Invite selected.');
         }
     },
     host: function() {
@@ -179,7 +179,7 @@ Multiplayer.prototype = {
             else set_touch_start_label('Ready?');
             hud.show('description');
             $(hud.description).html(self.onlineLevel.description);
-            message('Online room ready. Share the join link, then press Space or Start.');
+            message('Room ready. Share invite, then Start.');
             if(callback) callback();
         });
     },
@@ -189,7 +189,7 @@ Multiplayer.prototype = {
         this.game.set_player_count(count);
         this.game.reset();
         this.game.continue_fn = this.game.resume;
-        this.set_status('Game started with ' + this.player_label(count) + '.');
+        this.set_status('Started: ' + this.player_label(count) + '.');
         return this.game.resume();
     },
     broadcast_lobby: function() {
@@ -292,7 +292,7 @@ Multiplayer.prototype = {
         }
         this.game.is_paused = snapshot.paused;
         this.game.is_ended = snapshot.ended;
-        $('#net-players').html('Players joined: ' + snapshot.players.length + '/' + this.maxPlayers);
+        $('#net-players').html('Joined: ' + snapshot.players.length + '/' + this.maxPlayers);
     },
     receive_from_host: function(msg) {
         if(!msg || typeof msg.type !== 'string') return;
@@ -307,15 +307,15 @@ Multiplayer.prototype = {
                 self.apply_snapshot(msg.snapshot);
                 self.ready = true;
                 set_touch_start_label('Ready?');
-                $('#net-players').html('Players joined: ' + msg.players + '/' + msg.maxPlayers);
-                self.set_status('Joined as ' + self.game.players[self.localIndex].name + '. Use arrows or on-screen buttons. Waiting for host.');
+                $('#net-players').html('Joined: ' + msg.players + '/' + msg.maxPlayers);
+                self.set_status(self.game.players[self.localIndex].name + '. Waiting.');
             });
         } else if(msg.type == 'lobby') {
             var player = this.game.players[this.localIndex];
             var name = player ? player.name : ('Player ' + (this.localIndex + 1));
             set_touch_start_label('Ready?');
-            $('#net-players').html('Players joined: ' + msg.players + '/' + msg.maxPlayers);
-            this.set_status('Joined as ' + name + '. Players: ' + msg.players + '/' + msg.maxPlayers + '. Waiting for host.');
+            $('#net-players').html('Joined: ' + msg.players + '/' + msg.maxPlayers);
+            this.set_status(name + '. Waiting.');
         } else if(msg.type == 'reset') {
             var self = this;
             this.prepare_online_game(function() { self.apply_snapshot(msg.snapshot); });
@@ -326,7 +326,7 @@ Multiplayer.prototype = {
             this.apply_snapshot(msg.snapshot);
             var player = this.game.players[this.localIndex];
             var name = player ? player.name : ('Player ' + (this.localIndex + 1));
-            this.set_status('Game started. You are ' + name + '.');
+            this.set_status('Playing: ' + name + '.');
         } else if(msg.type == 'pause') {
             message('Host paused.');
             this.game.is_paused = true;

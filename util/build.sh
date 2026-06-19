@@ -10,7 +10,7 @@ BUILD_PATH=../build/linerage
 WORKING_PATH=../static
 
 rm -rf $BUILD_PATH
-mkdir -p $BUILD_PATH/{js,css,levels,images}
+mkdir -p $BUILD_PATH/js $BUILD_PATH/css $BUILD_PATH/levels $BUILD_PATH/images
 cp -vr $WORKING_PATH/js/extern $BUILD_PATH/js/extern
 cp -v $WORKING_PATH/built.html $BUILD_PATH/index.html
 cp -v $WORKING_PATH/manifest.json $BUILD_PATH/manifest.json

@@ -57,6 +57,9 @@ Multiplayer.prototype = {
         }
         return token;
     },
+    invite_url: function(hostId) {
+        return location.href.replace(/#.*$/, '') + '#join=' + encodeURIComponent(hostId);
+    },
     update_lobby: function(extra) {
         var count = this.joined_count();
         $('#net-players').html('Joined: ' + count + '/' + this.maxPlayers);
@@ -97,8 +100,7 @@ Multiplayer.prototype = {
         $('#net-copy').text('Copy Invite');
         this.peer = new Peer(this.random_token());
         this.peer.on('open', function(id) {
-            var joinUrl = location.href.replace(/#.*$/, '') + '#join=' + encodeURIComponent(id);
-            $('#net-link').val(joinUrl);
+            $('#net-link').val(self.invite_url(id));
             self.update_lobby();
             self.prepare_online_game(function() {
                 self.ready = true;
@@ -122,6 +124,8 @@ Multiplayer.prototype = {
         var self = this;
         this.role = 'guest';
         $('#network').addClass('online');
+        $('#net-copy').text('Copy Invite');
+        $('#net-link').val(this.invite_url(hostId));
         set_touch_start_label('Ready?');
         this.peer = new Peer();
         this.peer.on('open', function() {

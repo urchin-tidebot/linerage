@@ -28,7 +28,7 @@ Multiplayer.prototype = {
         var self = this;
         var box = $('<div id="network"></div>');
         box.append('<div id="net-controls"><button id="net-host">Host Game</button><button id="net-copy" class="online-only">Copy Invite</button><input id="net-link" class="online-only" readonly="readonly" aria-label="Invite link" title="Click to select invite link" placeholder="Invite link" /></div>');
-        box.append('<div id="net-meta"><span id="net-players">Joined: 1/4</span> <span id="net-status">Offline hotseat mode.</span></div>');
+        box.append('<div id="net-meta"><span id="net-room" class="online-only">Room: —</span><span id="net-players">Joined: 1/4</span><span id="net-status">Offline hotseat mode.</span></div>');
         $('#content').prepend(box);
 
         $('#net-host').click(function() { self.host(); });
@@ -60,12 +60,15 @@ Multiplayer.prototype = {
     invite_url: function(hostId) {
         return location.href.replace(/#.*$/, '') + '#join=' + encodeURIComponent(hostId);
     },
+    set_room_code: function(hostId) {
+        $('#net-room').html('Room: ' + hostId);
+    },
     update_lobby: function(extra) {
         var count = this.joined_count();
         $('#net-players').html('Joined: ' + count + '/' + this.maxPlayers);
         if(this.role == 'host') {
             set_touch_start_label('Start');
-            this.set_status('Host: Red. Share invite, then Start.');
+            this.set_status('Red host. Share link, then Start.');
         } else if(extra) {
             this.set_status(extra);
         }
@@ -100,6 +103,7 @@ Multiplayer.prototype = {
         $('#net-copy').text('Copy Invite');
         this.peer = new Peer(this.random_token());
         this.peer.on('open', function(id) {
+            self.set_room_code(id);
             $('#net-link').val(self.invite_url(id));
             self.update_lobby();
             self.prepare_online_game(function() {
@@ -125,6 +129,7 @@ Multiplayer.prototype = {
         this.role = 'guest';
         $('#network').addClass('online');
         $('#net-copy').text('Copy Invite');
+        this.set_room_code(hostId);
         $('#net-link').val(this.invite_url(hostId));
         set_touch_start_label('Ready?');
         this.peer = new Peer();
@@ -206,7 +211,7 @@ Multiplayer.prototype = {
             if(self.role == 'host') set_touch_start_label('Start');
             else set_touch_start_label('Ready?');
             hud.hide();
-            message('Room ready. Share invite, then Start.');
+            message('');
             if(callback) callback();
         });
     },

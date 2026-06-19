@@ -41,6 +41,10 @@ h1.active {
     width: 640px;
     max-width: calc(100vw - 20px);
     margin: 0 auto 10px auto;
+    padding: 8px;
+    background: rgba(0,0,0,0.18);
+    border: 1px solid #333;
+    border-radius: 8px;
     color: #aaa;
     font-family: monospace;
     font-size: 12px;
@@ -84,16 +88,27 @@ h1.active {
     -webkit-user-select: text;
 }
 #net-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
     margin-top: 8px;
     color: #777;
-    line-height: 2em;
+    line-height: 1.35em;
     overflow-wrap: anywhere;
 }
-#net-players {
-    margin-right: 1em;
+#net-room, #net-players {
+    display: inline-block;
+    padding: 2px 6px;
+    border: 1px solid #3d3d3d;
+    border-radius: 999px;
+    background: #1b1b1b;
+    color: #aaa;
+    white-space: nowrap;
 }
 #net-status {
     color: #777;
+    flex: 1 1 180px;
 }
 #game {
     width: 640px;
@@ -188,6 +203,11 @@ h1.active {
     max-width: calc(100vw - 20px);
     margin: 14px auto;
     min-height: 34px;
+}
+#messages:empty {
+    min-height: 0;
+    margin-top: 0;
+    margin-bottom: 0;
 }
 #touch-controls {
     width: 640px;
@@ -297,11 +317,21 @@ h1.active {
     #network {
         width: calc(100vw - 16px);
         max-width: none;
+        padding: 6px;
+        border-radius: 6px;
     }
     #net-controls {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 6px;
+    }
+    #net-meta {
+        gap: 4px;
+        margin-top: 6px;
+        font-size: 11px;
+    }
+    #net-status {
+        flex-basis: 100%;
     }
     #net-host, #net-copy {
         width: 100%;

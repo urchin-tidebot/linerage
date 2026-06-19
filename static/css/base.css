@@ -79,6 +79,9 @@ h1.active {
     box-sizing: border-box;
     min-height: 34px;
     min-width: 0;
+    cursor: text;
+    user-select: text;
+    -webkit-user-select: text;
 }
 #net-meta {
     margin-top: 8px;

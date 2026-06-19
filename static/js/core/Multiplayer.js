@@ -27,12 +27,14 @@ Multiplayer.prototype = {
     draw_ui: function() {
         var self = this;
         var box = $('<div id="network"></div>');
-        box.append('<div id="net-controls"><button id="net-host">Host Game</button><button id="net-copy" class="online-only">Copy Invite</button><input id="net-link" class="online-only" readonly="readonly" placeholder="Invite link" /></div>');
+        box.append('<div id="net-controls"><button id="net-host">Host Game</button><button id="net-copy" class="online-only">Copy Invite</button><input id="net-link" class="online-only" readonly="readonly" aria-label="Invite link" title="Click to select invite link" placeholder="Invite link" /></div>');
         box.append('<div id="net-meta"><span id="net-players">Joined: 1/4</span> <span id="net-status">Offline hotseat mode.</span></div>');
         $('#content').prepend(box);
 
         $('#net-host').click(function() { self.host(); });
         $('#net-copy').click(function() { self.copy_link(); });
+        $('#net-link').focus(function() { this.select(); });
+        $('#net-link').click(function() { this.select(); });
     },
     set_status: function(s) {
         $('#net-status').html(s);

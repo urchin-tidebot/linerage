@@ -258,6 +258,18 @@ LineRageGame.prototype = {
         this.num_players = this.players.length;
         this._refresh_controls_cache();
     },
+    set_player_count: function(count) {
+        count = Math.max(1, Math.min(4, count));
+        while(this.players.length < count) {
+            this.players.push(new Player(Player.TEMPLATE_LIST[this.players.length]));
+        }
+        while(this.players.length > count) {
+            this.players.pop();
+        }
+        this.num_players = this.players.length;
+        this._refresh_controls_cache();
+        this._refresh_game_conditions();
+    },
     _refresh_game_conditions: function() {
         if(!this.level.is_deathmatch) {
             this.num_end = 0;

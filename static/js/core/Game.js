@@ -25,6 +25,15 @@ function set_touch_start_label(label) {
     $('#touch-start').text(label).attr('aria-label', label);
 }
 
+function set_touch_turn_color(player) {
+    if(!player) return;
+    $('#touch-left, #touch-right').css({
+        'background-color': player.color,
+        'border-color': player.color,
+        'color': '#fff'
+    });
+}
+
 
 function LineRageGame(canvases) {
     // TODO: Put these guys into a clojure scope to reduce instance access
@@ -244,6 +253,7 @@ LineRageGame.prototype = {
         this.num_active = this.num_players;
         this.is_ended = false;
         set_touch_start_label('Ready?');
+        set_touch_turn_color(this.players[0]);
         $("#touch-start").show();
         this.continue_fn = this.pause;
 

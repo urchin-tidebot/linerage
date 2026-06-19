@@ -66,6 +66,7 @@ h1.active {
     padding: 6px;
     box-sizing: border-box;
     min-height: 34px;
+    min-width: 0;
 }
 #net-status {
     margin-top: 5px;
@@ -282,6 +283,14 @@ h1.active {
     #net-link {
         grid-column: 1 / -1;
         width: 100%;
+        max-width: none;
+        justify-self: stretch;
+        display: block;
+    }
+    #network input#net-link {
+        width: 100%;
+        min-width: 100%;
+        max-width: none;
     }
     #net-players, #net-status {
         grid-column: 1 / -1;

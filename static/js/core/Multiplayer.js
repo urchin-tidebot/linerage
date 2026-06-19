@@ -11,7 +11,7 @@ function Multiplayer(game) {
     this.onlineLevel = new Level({
         "name": "Online Deathmatch",
         "url": "levels/deathmatch/blank.png",
-        "description": "<p>Online: turn with arrows or touch. Host shares an invite and starts when ready.</p>",
+        "description": "",
         "is_deathmatch": true,
         "max_players": 4,
         "min_players": 1
@@ -177,8 +177,7 @@ Multiplayer.prototype = {
             self.game.continue_fn = function() { return self.start_game(); };
             if(self.role == 'host') set_touch_start_label('Start');
             else set_touch_start_label('Ready?');
-            hud.show('description');
-            $(hud.description).html(self.onlineLevel.description);
+            hud.hide();
             message('Room ready. Share invite, then Start.');
             if(callback) callback();
         });
@@ -292,6 +291,7 @@ Multiplayer.prototype = {
         }
         this.game.is_paused = snapshot.paused;
         this.game.is_ended = snapshot.ended;
+        set_touch_turn_color(this.game.players[this.localIndex]);
         $('#net-players').html('Joined: ' + snapshot.players.length + '/' + this.maxPlayers);
     },
     receive_from_host: function(msg) {

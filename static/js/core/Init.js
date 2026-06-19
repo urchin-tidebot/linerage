@@ -1,4 +1,4 @@
-var game, hud, stats, levelpacks = [];
+var game, hud, stats, multiplayer, levelpacks = [];
 $(document).ready(function() {
     $("body").disableTextSelect();
     game = new LineRageGame({
@@ -114,4 +114,6 @@ $(document).ready(function() {
 
     hud.draw();
     hud.show('packs');
+    multiplayer = new Multiplayer(game);
+    game.multiplayer = multiplayer;
 });

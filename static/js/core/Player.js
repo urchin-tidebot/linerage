@@ -80,6 +80,12 @@ Player.prototype = {
         ctx.moveTo(old_pos[0], old_pos[1]);
         ctx.lineTo(new_pos[0], new_pos[1]);
         ctx.stroke();
+        return {
+            old_pos: old_pos,
+            new_pos: new_pos,
+            color: this.color,
+            active: this.is_active
+        };
     },
     get_pos: function() {
         // Get normalized position on context

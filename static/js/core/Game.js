@@ -18,7 +18,7 @@ var Game = Class({
             this.layers.push(layer.getContext('2d'));
             this.container.appendChild(layer);
         }
-    },
+    }
 });
 
 
@@ -57,16 +57,21 @@ function LineRageGame(canvases) {
     var game_tick = function() {
         var now = +new Date();
         var time_delta = now - self.time_last_tick;
+        var segments = [];
 
         if(self.is_paused) return;
 
         for(var i=0; i<self.num_players; i++) {
             var p = self.players[i];
-            if(p.is_active) p.move(entity_context, self.level, time_delta);
+            if(p.is_active) {
+                var segment = p.move(entity_context, self.level, time_delta);
+                if(segment) segments.push(segment);
+            }
         }
 
         self.time_last_tick = now;
         tick_num++;
+        if(self.multiplayer && self.multiplayer.after_tick) self.multiplayer.after_tick(segments);
     }
     this.game_loop = function() {
         game_tick();
@@ -78,6 +83,7 @@ function LineRageGame(canvases) {
     // Bind controls
     window.onkeydown = function(e) {
         // Find which player owns the key
+        if(self.multiplayer && self.multiplayer.handle_key && self.multiplayer.handle_key(e, true)) return false;
         if(e.which == 32) {
             return self.continue_fn();
         }
@@ -89,6 +95,7 @@ function LineRageGame(canvases) {
         }
     };
     window.onkeyup = function(e) {
+        if(self.multiplayer && self.multiplayer.handle_key && self.multiplayer.handle_key(e, false)) return false;
         if(e.which == 32) return;
 
         var player_action = self._controls_cache[e.which];
@@ -189,6 +196,7 @@ LineRageGame.prototype = {
         message("Paused.");
         this.is_paused = true;
         this.continue_fn = this.resume;
+        if(this.multiplayer && this.multiplayer.on_pause) this.multiplayer.on_pause();
     },
     resume: function() {
         hud.hide();
@@ -199,6 +207,7 @@ LineRageGame.prototype = {
 
         this.time_last_tick = +new Date();
         this.loop = setInterval(this.game_loop, 1000 / 30);
+        if(this.multiplayer && this.multiplayer.on_resume) this.multiplayer.on_resume();
     },
     end: function() {
         clearInterval(this.loop);
@@ -213,6 +222,7 @@ LineRageGame.prototype = {
             message("Ready?");
             self.continue_fn = self.resume;
         }
+        if(this.multiplayer && this.multiplayer.on_end) this.multiplayer.on_end();
     },
     reset: function() {
         if(!this.is_ready) return;
@@ -234,6 +244,7 @@ LineRageGame.prototype = {
         this.level.state.reset();
 
         $("#score").text("0");
+        if(this.multiplayer && this.multiplayer.on_reset) this.multiplayer.on_reset();
     },
     add_player: function() {
         if(!this.is_ended || this.num_players >= 4) return;

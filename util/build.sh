@@ -1,4 +1,5 @@
 #!/bin/sh
+set -e
 
 if [ ! -d ../build ]; then
     echo "build dir doesn't exist. aborting."
@@ -24,16 +25,21 @@ echo "Compiling..."
 java -jar compiler.jar \
     --js_output_file ../build/linerage/js/all.js \
     --externs jquery-1.4.4.externs.js \
+    --js ../static/js/lib/Class.js \
+    --js ../static/js/lib/Dom.js \
     --js ../static/js/lib/Util.js \
+    --js ../static/js/lib/Clock.js \
     --js ../static/js/lib/Collision.js \
+    --js ../static/js/core/Input.js \
     --js ../static/js/core/Player.js \
     --js ../static/js/core/Entity.js \
     --js ../static/js/core/Level.js \
     --js ../static/js/core/Hud.js \
     --js ../static/js/core/Game.js \
+    --js ../static/js/core/Multiplayer.js \
     --js ../static/js/core/Init.js \
 
 cd $BUILD_PATH
-rm linerage.zip
+rm -f linerage.zip
 zip -r ../linerage.zip .
 cd -

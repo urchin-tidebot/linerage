@@ -30,6 +30,34 @@ h1.active {
 #content {
     padding: 10px;
 }
+#network {
+    width: 640px;
+    margin: 0 auto 10px auto;
+    color: #aaa;
+    font-family: monospace;
+    font-size: 12px;
+}
+#network button {
+    background: #333;
+    color: #eee;
+    border: 1px solid #555;
+    padding: 4px 8px;
+    cursor: pointer;
+}
+#network button:hover {
+    background: #500;
+}
+#network input {
+    width: 355px;
+    background: #111;
+    color: #e69d1e;
+    border: 1px solid #444;
+    padding: 4px;
+}
+#net-status {
+    margin-top: 5px;
+    color: #777;
+}
 #game {
     width: 640px;
     height: 480px;

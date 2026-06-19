@@ -201,6 +201,7 @@ LineRageGame.prototype = {
     resume: function() {
         hud.hide();
         message("");
+        $("#touch-start").hide();
         this.is_paused = false;
         this.continue_fn = this.pause;
         this.is_fresh = false;
@@ -214,6 +215,7 @@ LineRageGame.prototype = {
 
         this.is_ended = true;
         this.is_paused = true;
+        $("#touch-start").show();
 
         var self = this;
         this.continue_fn = function() {
@@ -236,6 +238,7 @@ LineRageGame.prototype = {
         this.time_started = +new Date();
         this.num_active = this.num_players;
         this.is_ended = false;
+        $("#touch-start").show();
         this.continue_fn = this.pause;
 
         this.is_fresh = true;

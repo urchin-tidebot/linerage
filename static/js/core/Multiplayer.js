@@ -316,6 +316,7 @@ Multiplayer.prototype = {
         } else if(msg.type == 'resume') {
             hud.hide();
             message('');
+            $('#touch-start').hide();
             this.apply_snapshot(msg.snapshot);
             var player = this.game.players[this.localIndex];
             var name = player ? player.name : ('Player ' + (this.localIndex + 1));
@@ -326,6 +327,7 @@ Multiplayer.prototype = {
         } else if(msg.type == 'end') {
             this.apply_snapshot(msg.snapshot);
             this.game.is_paused = true;
+            $('#touch-start').show();
         } else if(msg.type == 'tick') {
             this.draw_segments(msg.segments);
             this.apply_snapshot(msg.snapshot);

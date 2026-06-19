@@ -50,6 +50,7 @@ Multiplayer.prototype = {
         var count = this.joined_count();
         $('#net-players').html('Players joined: ' + count + '/' + this.maxPlayers);
         if(this.role == 'host') {
+            set_touch_start_label('Start');
             this.set_status('Hosting as Red Player. ' + this.player_label(count) + '. Share the join link, then press Space or Start.');
         } else if(extra) {
             this.set_status(extra);
@@ -97,6 +98,7 @@ Multiplayer.prototype = {
         }
         var self = this;
         this.role = 'guest';
+        set_touch_start_label('Ready?');
         this.peer = new Peer();
         this.peer.on('open', function() {
             self.set_status('Connecting to host...');
@@ -173,6 +175,8 @@ Multiplayer.prototype = {
             self.game.set_player_count(self.maxPlayers);
             self.game.reset();
             self.game.continue_fn = function() { return self.start_game(); };
+            if(self.role == 'host') set_touch_start_label('Start');
+            else set_touch_start_label('Ready?');
             hud.show('description');
             $(hud.description).html(self.onlineLevel.description);
             message('Online room ready. Share the join link, then press Space or Start.');
@@ -302,12 +306,14 @@ Multiplayer.prototype = {
             this.prepare_online_game(function() {
                 self.apply_snapshot(msg.snapshot);
                 self.ready = true;
+                set_touch_start_label('Ready?');
                 $('#net-players').html('Players joined: ' + msg.players + '/' + msg.maxPlayers);
                 self.set_status('Joined as ' + self.game.players[self.localIndex].name + '. Use arrows or on-screen buttons. Waiting for host.');
             });
         } else if(msg.type == 'lobby') {
             var player = this.game.players[this.localIndex];
             var name = player ? player.name : ('Player ' + (this.localIndex + 1));
+            set_touch_start_label('Ready?');
             $('#net-players').html('Players joined: ' + msg.players + '/' + msg.maxPlayers);
             this.set_status('Joined as ' + name + '. Players: ' + msg.players + '/' + msg.maxPlayers + '. Waiting for host.');
         } else if(msg.type == 'reset') {
@@ -327,6 +333,7 @@ Multiplayer.prototype = {
         } else if(msg.type == 'end') {
             this.apply_snapshot(msg.snapshot);
             this.game.is_paused = true;
+            set_touch_start_label('Ready?');
             $('#touch-start').show();
         } else if(msg.type == 'tick') {
             this.draw_segments(msg.segments);

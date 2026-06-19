@@ -21,6 +21,10 @@ var Game = Class({
     }
 });
 
+function set_touch_start_label(label) {
+    $('#touch-start').text(label).attr('aria-label', label);
+}
+
 
 function LineRageGame(canvases) {
     // TODO: Put these guys into a clojure scope to reduce instance access
@@ -215,6 +219,7 @@ LineRageGame.prototype = {
 
         this.is_ended = true;
         this.is_paused = true;
+        set_touch_start_label('Ready?');
         $("#touch-start").show();
 
         var self = this;
@@ -238,6 +243,7 @@ LineRageGame.prototype = {
         this.time_started = +new Date();
         this.num_active = this.num_players;
         this.is_ended = false;
+        set_touch_start_label('Ready?');
         $("#touch-start").show();
         this.continue_fn = this.pause;
 

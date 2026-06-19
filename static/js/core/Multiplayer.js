@@ -11,7 +11,7 @@ function Multiplayer(game) {
     this.onlineLevel = new Level({
         "name": "Online Deathmatch",
         "url": "levels/deathmatch/blank.png",
-        "description": "<p>Online deathmatch: each browser controls one line with Left/Right arrows. Host creates a join link and starts with Space.</p>",
+        "description": "<p>Online deathmatch: each browser controls one line with Left/Right arrows or the on-screen buttons. Host creates a join link and starts with Space or Start.</p>",
         "is_deathmatch": true,
         "max_players": 4,
         "min_players": 4
@@ -62,7 +62,7 @@ Multiplayer.prototype = {
         this.peer.on('open', function(id) {
             var joinUrl = location.href.replace(/#.*$/, '') + '#join=' + encodeURIComponent(id);
             $('#net-link').val(joinUrl);
-            self.set_status('Hosting as Red Player. Share the join link. Players: 1/4. Press Space to start when ready.');
+            self.set_status('Hosting as Red Player. Share the join link. Players: 1/4. Press Space or Start when ready.');
             self.prepare_online_game(function() {
                 self.ready = true;
             });
@@ -112,7 +112,7 @@ Multiplayer.prototype = {
                 snapshot: self.snapshot()
             });
             self.broadcast_lobby();
-            self.set_status('Hosting as Red Player. Players: ' + (self.conns.length + 1) + '/4. Press Space to start.');
+            self.set_status('Hosting as Red Player. Players: ' + (self.conns.length + 1) + '/4. Press Space or Start.');
         });
         conn.on('data', function(msg) {
             if(!msg || typeof msg.type !== 'string') return;
@@ -142,7 +142,7 @@ Multiplayer.prototype = {
             self.game.continue_fn = self.game.resume;
             hud.show('description');
             $(hud.description).html(self.onlineLevel.description);
-            message('Online room ready. Share the join link, then press Space to start.');
+            message('Online room ready. Share the join link, then press Space or Start.');
             if(callback) callback();
         });
     },
@@ -165,6 +165,12 @@ Multiplayer.prototype = {
         else if(e.which == 39) move = 'right';
         else return false;
 
+        this.handle_move(move, isDown);
+        e.preventDefault();
+        return true;
+    },
+    handle_move: function(move, isDown) {
+        if(this.role == 'offline') return false;
         if(!isDown) move = null;
         if(this.role == 'guest') {
             this.apply_input(this.localIndex, move);
@@ -172,7 +178,6 @@ Multiplayer.prototype = {
         } else if(this.role == 'host') {
             this.apply_input(0, move);
         }
-        e.preventDefault();
         return true;
     },
     apply_input: function(index, move) {
@@ -249,7 +254,7 @@ Multiplayer.prototype = {
             this.prepare_online_game(function() {
                 self.apply_snapshot(msg.snapshot);
                 self.ready = true;
-                self.set_status('Joined as ' + self.game.players[self.localIndex].name + '. Use Left/Right arrows. Waiting for host.');
+                self.set_status('Joined as ' + self.game.players[self.localIndex].name + '. Use arrows or on-screen buttons. Waiting for host.');
             });
         } else if(msg.type == 'lobby') {
             var player = this.game.players[this.localIndex];

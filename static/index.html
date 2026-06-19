@@ -3,6 +3,7 @@
 
 <meta charset="utf-8" />
 <meta content="text/html; charset=utf-8" http-equiv="Content-Type" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 
 <title>LineRage</title>
 
@@ -23,6 +24,11 @@
         <canvas id="static_canvas" width="640" height="480" style="z-index: 1;"></canvas>
     </div>
     <div id="messages"></div>
+    <div id="touch-controls" aria-label="Touch controls">
+        <button id="touch-left" class="touch-button" aria-label="Turn left">◀</button>
+        <button id="touch-start" class="touch-button touch-start" aria-label="Start or pause">Start</button>
+        <button id="touch-right" class="touch-button" aria-label="Turn right">▶</button>
+    </div>
 </div>
 
 <script src="js/extern/jquery-1.4.4.min.js"></script>
@@ -44,6 +50,7 @@
 <script src="js/core/Game.js"></script>
 <script src="js/core/Hud.js"></script>
 <script src="js/core/Multiplayer.js"></script>
+<script src="js/core/TouchControls.js"></script>
 <script src="js/core/Init.js"></script>
 
 <!-- Dev only -->

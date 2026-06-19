@@ -37,6 +37,7 @@ java -jar compiler.jar \
     --js ../static/js/core/Hud.js \
     --js ../static/js/core/Game.js \
     --js ../static/js/core/Multiplayer.js \
+    --js ../static/js/core/TouchControls.js \
     --js ../static/js/core/Init.js \
 
 cd $BUILD_PATH

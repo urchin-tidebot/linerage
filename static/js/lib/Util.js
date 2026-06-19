@@ -133,37 +133,54 @@ function iter_box(box, fn) {
 }
 
 function iter_line(A, B, fn) {
-    // Bresenham's line algorithm from point A to point B.
+    // Supercover line algorithm from point A to point B.
+    // Visits every integer cell touched by the continuous segment.
 
-    var x0 = A[0], x1 = B[0], y0 = A[1], y1 = B[1];
+    var x = A[0], y = A[1];
+    var x2 = B[0], y2 = B[1];
 
-    var steep = Math.abs(y1 - y0) > Math.abs(x1 - x0);
-    if(steep) {
-        x0 = A[1]; y0 = A[0]; // Swap x0 <-> y0
-        x1 = B[1]; y1 = B[0]; // Swap x1 <-> y1
-    }
+    var dx = x2 - x, dy = y2 - y;
+    var nx = Math.abs(dx), ny = Math.abs(dy);
+    var sx = dx > 0 ? 1 : -1;
+    var sy = dy > 0 ? 1 : -1;
 
-    if(x0 > x1) {
-        var t = x0; x0 = x1, x1 = t; // Swap x0 <-> x1
-        var t = y0; y0 = y1; y1 = t; // Swap y0 <-> y1
-    }
-
-    var dx = x1 - x0, dy = Math.abs(y1 - y0);
-    var error = dx / 2, ystep = -1;
-    if(y0 < y1) ystep = 1;
-
+    var ix = 0, iy = 0;
     var r;
-    for(var x=x0, y=y0, stop=x1; x<=stop; x++) {
-        if(steep) r = fn([y,x])
-        else r = fn([x,y]);
 
-        if(r==false) return false;
+    r = fn([x, y]);
+    if(r==false) return false;
 
-        error -= dy;
-        if(error < 0) {
-            y += ystep;
-            error += dx;
+    while(ix < nx || iy < ny) {
+        var decision = (1 + 2 * ix) * ny - (1 + 2 * iy) * nx;
+
+        if(decision == 0) {
+            // The segment goes exactly through a grid corner. Visit both
+            // adjacent cells before advancing diagonally.
+            if(ix < nx) {
+                r = fn([x + sx, y]);
+                if(r==false) return false;
+            }
+            if(iy < ny) {
+                r = fn([x, y + sy]);
+                if(r==false) return false;
+            }
+
+            x += sx;
+            y += sy;
+            ix++;
+            iy++;
+
+        } else if(decision < 0) {
+            x += sx;
+            ix++;
+
+        } else {
+            y += sy;
+            iy++;
         }
+
+        r = fn([x, y]);
+        if(r==false) return false;
     }
 }
 

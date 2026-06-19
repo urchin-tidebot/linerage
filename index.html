@@ -1,0 +1,52 @@
+<html lang="en">
+<head>
+
+<meta charset="utf-8" />
+<meta content="text/html; charset=utf-8" http-equiv="Content-Type" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+
+<title>LineRage</title>
+
+<link rel="icon" type="image/png" href="icon_32.png" />
+<link href="css/base.css" rel="stylesheet" type="text/css"/>
+
+</head>
+<body>
+
+<div id="content">
+    <div id="header">
+        <span id="score">0</span>
+        <h1>LineRage</h1>
+    </div>
+    <div id="game">
+        <div id="hud" style="display: none;"></div>
+        <canvas id="dynamic_canvas" width="640" height="480" style="z-index: 2;"></canvas>
+        <canvas id="static_canvas" width="640" height="480" style="z-index: 1;"></canvas>
+    </div>
+    <div id="messages"></div>
+    <div id="touch-controls" aria-label="Touch controls">
+        <button id="touch-left" class="touch-button" aria-label="Turn left">◀</button>
+        <button id="touch-start" class="touch-button touch-start" aria-label="Ready?">Ready?</button>
+        <button id="touch-right" class="touch-button" aria-label="Turn right">▶</button>
+    </div>
+</div>
+
+<script src="js/extern/jquery-1.4.4.min.js"></script>
+<script src="js/extern/jquery.disable.text.select.js"></script>
+<script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
+
+<script src="js/all.js"></script>
+<script type="text/javascript">
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-407051-1']);
+  _gaq.push(['_trackPageview']);
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+</script>
+
+</body>
+
+</html>

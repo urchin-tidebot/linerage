@@ -203,8 +203,8 @@ Multiplayer.prototype = {
         }
 
         var move = null;
-        if(e.which == 37) move = 'left';
-        else if(e.which == 39) move = 'right';
+        if(e.which == 37 || e.which == 65) move = 'left';
+        else if(e.which == 39 || e.which == 68) move = 'right';
         else return false;
 
         this.handle_move(move, isDown);

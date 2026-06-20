@@ -401,9 +401,3 @@ h1.active {
         margin-bottom: 8px;
     }
 }
-
-@media (hover: hover) and (pointer: fine) and (min-width: 701px) {
-    #touch-controls {
-        display: none;
-    }
-}

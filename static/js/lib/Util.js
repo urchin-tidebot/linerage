@@ -208,6 +208,12 @@ function message(s) {
     return message;
 }
 
+function message_text(s) {
+    if(message._target===undefined) message._target = document.getElementById("messages");
+    message._target.textContent = s;
+    return message;
+}
+
 function inverse_lookup(o) {
     var r = {};
     for(var k in o) {

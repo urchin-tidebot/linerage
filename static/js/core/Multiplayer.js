@@ -7,6 +7,7 @@ function Multiplayer(game) {
     this.localIndex = 0;
     this.maxPlayers = 4;
     this.tick = 0;
+    this.lastTick = 0;
     this.ready = false;
     this.onlineLevel = new Level({
         "name": "Online Deathmatch",
@@ -37,7 +38,7 @@ Multiplayer.prototype = {
         $('#net-link').click(function() { this.select(); });
     },
     set_status: function(s) {
-        $('#net-status').html(s);
+        $('#net-status').text(s);
     },
     joined_count: function() {
         return this.role == 'host' ? this.conns.length + 1 : this.game.num_players;
@@ -61,11 +62,11 @@ Multiplayer.prototype = {
         return location.href.replace(/#.*$/, '') + '#join=' + encodeURIComponent(hostId);
     },
     set_room_code: function(hostId) {
-        $('#net-room').html('Room: ' + hostId);
+        $('#net-room').text('Room: ' + hostId);
     },
     update_lobby: function(extra) {
         var count = this.joined_count();
-        $('#net-players').html('Joined: ' + count + '/' + this.maxPlayers);
+        $('#net-players').text('Joined: ' + count + '/' + this.maxPlayers);
         if(this.role == 'host') {
             set_touch_start_label('Start');
             this.set_status('Red host. Share link, then Start.');
@@ -97,6 +98,7 @@ Multiplayer.prototype = {
             return;
         }
         var self = this;
+        this.close_existing_session();
         this.role = 'host';
         this.localIndex = 0;
         $('#network').addClass('online');
@@ -126,6 +128,7 @@ Multiplayer.prototype = {
             return;
         }
         var self = this;
+        this.close_existing_session();
         this.role = 'guest';
         $('#network').addClass('online');
         $('#net-copy').text('Copy Invite');
@@ -149,7 +152,7 @@ Multiplayer.prototype = {
         var self = this;
         conn.playerIndex = null;
         conn.on('open', function() {
-            if(!self.game.is_paused || !self.game.is_fresh) {
+            if(!self.game.is_paused || (!self.game.is_fresh && !self.game.is_ended)) {
                 self.send(conn, {type: 'started'});
                 conn.close();
                 return;
@@ -161,6 +164,7 @@ Multiplayer.prototype = {
             }
             conn.playerIndex = self.next_player_index();
             self.conns.push(conn);
+            if(self.game.is_paused) self.game.set_player_count(self.conns.length + 1);
             self.send(conn, {
                 type: 'welcome',
                 protocol: Multiplayer.PROTOCOL,
@@ -174,6 +178,11 @@ Multiplayer.prototype = {
         });
         conn.on('data', function(msg) {
             if(!msg || typeof msg.type !== 'string') return;
+            if(msg.type == 'hello' && msg.protocol !== Multiplayer.PROTOCOL) {
+                self.send(conn, {type: 'protocol', protocol: Multiplayer.PROTOCOL});
+                conn.close();
+                return;
+            }
             if(msg.type == 'input' && conn.playerIndex !== null) {
                 self.apply_input(conn.playerIndex, msg.move);
             }
@@ -183,12 +192,24 @@ Multiplayer.prototype = {
                 if(self.conns[i] == conn) self.conns.splice(i, 1);
             }
             if(conn.playerIndex !== null && self.game.players[conn.playerIndex]) {
-                self.apply_input(conn.playerIndex, null);
-                self.game.players[conn.playerIndex].is_active = false;
+                self.eliminate_player(conn.playerIndex, 'disconnected.');
             }
+            if(self.game.is_paused && !self.game.is_ended) self.game.set_player_count(self.conns.length + 1);
             self.broadcast_lobby();
             self.update_lobby();
         });
+    },
+    close_existing_session: function() {
+        if(this.hostConn && this.hostConn.close) this.hostConn.close();
+        for(var i=0; i<this.conns.length; i++) {
+            if(this.conns[i] && this.conns[i].close) this.conns[i].close();
+        }
+        this.conns = [];
+        this.hostConn = null;
+        if(this.peer && this.peer.destroy) this.peer.destroy();
+        this.peer = null;
+        this.ready = false;
+        this.lastTick = 0;
     },
     next_player_index: function() {
         for(var i=1; i<this.maxPlayers; i++) {
@@ -270,6 +291,8 @@ Multiplayer.prototype = {
         for(var i=0; i<this.conns.length; i++) this.send(this.conns[i], msg);
     },
     on_reset: function() {
+        this.tick = 0;
+        this.lastTick = 0;
         if(this.role == 'host') this.broadcast({type: 'reset', snapshot: this.snapshot()});
     },
     on_resume: function() {
@@ -284,7 +307,7 @@ Multiplayer.prototype = {
             setTimeout(function() {
                 set_touch_start_label('Start');
                 self.game.continue_fn = function() { return self.start_game(); };
-                self.broadcast({type: 'end', snapshot: self.snapshot(), message: $('#messages').html()});
+                self.broadcast({type: 'end', snapshot: self.snapshot(), message: $('#messages').text()});
             }, 0);
         }
     },
@@ -332,7 +355,7 @@ Multiplayer.prototype = {
         this.game.is_paused = snapshot.paused;
         this.game.is_ended = snapshot.ended;
         set_touch_turn_color(this.game.players[this.localIndex]);
-        $('#net-players').html('Joined: ' + snapshot.players.length + '/' + this.maxPlayers);
+        $('#net-players').text('Joined: ' + snapshot.players.length + '/' + this.maxPlayers);
     },
     receive_from_host: function(msg) {
         if(!msg || typeof msg.type !== 'string') return;
@@ -340,21 +363,28 @@ Multiplayer.prototype = {
             this.set_status('Room is full.');
         } else if(msg.type == 'started') {
             this.set_status('Game already started. Ask the host for a new room.');
+        } else if(msg.type == 'protocol') {
+            this.set_status('Protocol mismatch. Reload the page and try again.');
         } else if(msg.type == 'welcome') {
+            if(msg.protocol !== Multiplayer.PROTOCOL) {
+                this.set_status('Protocol mismatch. Reload the page and try again.');
+                if(this.hostConn && this.hostConn.close) this.hostConn.close();
+                return;
+            }
             this.localIndex = msg.playerIndex;
             var self = this;
             this.prepare_online_game(function() {
                 self.apply_snapshot(msg.snapshot);
                 self.ready = true;
                 set_touch_start_label('Ready?');
-                $('#net-players').html('Joined: ' + msg.players + '/' + msg.maxPlayers);
+                $('#net-players').text('Joined: ' + msg.players + '/' + msg.maxPlayers);
                 self.set_status(self.game.players[self.localIndex].name + '. Waiting.');
             });
         } else if(msg.type == 'lobby') {
             var player = this.game.players[this.localIndex];
             var name = player ? player.name : ('Player ' + (this.localIndex + 1));
             set_touch_start_label('Ready?');
-            $('#net-players').html('Joined: ' + msg.players + '/' + msg.maxPlayers);
+            $('#net-players').text('Joined: ' + msg.players + '/' + msg.maxPlayers);
             this.set_status(name + '. Waiting.');
         } else if(msg.type == 'reset') {
             var self = this;
@@ -375,10 +405,27 @@ Multiplayer.prototype = {
             this.game.is_paused = true;
             set_touch_start_label('Ready?');
             set_touch_start_visible(true);
-            if(msg.message) message(msg.message);
+            if(msg.message) message_text(msg.message);
         } else if(msg.type == 'tick') {
+            if(msg.tick && msg.tick <= this.lastTick) return;
+            this.lastTick = msg.tick || this.lastTick;
             this.draw_segments(msg.segments);
             this.apply_snapshot(msg.snapshot);
+        }
+    },
+    eliminate_player: function(index, suffix) {
+        var player = this.game.players[index];
+        if(!player) return;
+        this.apply_input(index, null);
+        if(!player.is_active) return;
+        player.is_active = false;
+        if(!this.game.is_paused && !this.game.is_ended) {
+            this.game.num_active = Math.max(0, this.game.num_active - 1);
+            if(this.game.num_active <= this.game.num_end) {
+                $(window).trigger('lose', [player]);
+            } else if(suffix) {
+                message_text(player.name + ' ' + suffix);
+            }
         }
     },
     draw_segments: function(segments) {

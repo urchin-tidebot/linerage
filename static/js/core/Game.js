@@ -104,6 +104,7 @@ function LineRageGame(canvases) {
         // Find which player owns the key
         if(self.multiplayer && self.multiplayer.handle_key && self.multiplayer.handle_key(e, true)) return false;
         if(e.which == 32) {
+            if(e.repeat) return false;
             return self.continue_fn();
         }
 

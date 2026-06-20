@@ -1,6 +1,6 @@
 var game, hud, stats, multiplayer, touchControls, levelpacks = [];
 $(document).ready(function() {
-    $("body").disableTextSelect();
+    $("#game, #touch-controls").disableTextSelect();
     game = new LineRageGame({
         'static': document.getElementById("static_canvas"),
         'dynamic': document.getElementById("dynamic_canvas")

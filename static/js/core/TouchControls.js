@@ -11,6 +11,10 @@ TouchControls.prototype = {
         this.bind_button('#touch-left', 'left');
         this.bind_button('#touch-right', 'right');
         $('#touch-start').bind('touchstart mousedown', function(e) {
+            if(e.type == 'touchstart') self.lastTouchStart = +new Date();
+            if(e.type == 'mousedown' && self.lastTouchStart && (+new Date() - self.lastTouchStart) < 700) {
+                return self.stop_event(e);
+            }
             self.stop_event(e);
             self.start_or_pause();
         });
@@ -42,11 +46,19 @@ TouchControls.prototype = {
         return this.game.continue_fn();
     },
     set_move: function(move, isDown) {
+        if(move == 'left') this.leftActive = isDown;
+        if(move == 'right') this.rightActive = isDown;
+
+        var currentMove = null;
+        if(this.leftActive && !this.rightActive) currentMove = 'left';
+        else if(this.rightActive && !this.leftActive) currentMove = 'right';
+        else if(isDown) currentMove = move;
+
         if(this.game.multiplayer && this.game.multiplayer.role != 'offline') {
-            this.game.multiplayer.handle_move(move, isDown);
+            this.game.multiplayer.handle_move(currentMove, true);
         } else {
             var player = this.game.players[0];
-            if(player) player.move_buffer = isDown ? move : null;
+            if(player) player.move_buffer = currentMove;
         }
         if(!this.game.is_paused && this.game.game_loop) this.game.game_loop();
     }

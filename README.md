@@ -39,3 +39,25 @@ Run flake checks:
 ```sh
 nix flake check
 ```
+
+## Browser smoke screenshots
+
+Generate repeatable browser evidence for visual PRs against the Nix-built site:
+
+```sh
+nix run .#browser-smoke
+# or choose an artifact directory
+nix run .#browser-smoke -- artifacts/my-change
+```
+
+The smoke test opens the built game in Chromium at desktop and mobile viewports, fails on browser console errors, horizontal overflow, or missing touch controls, and writes:
+
+```text
+artifacts/browser-smoke/
+  desktop.png
+  mobile.png
+  metrics.json
+  console.json
+```
+
+Include the screenshots in PRs that change visible UI.

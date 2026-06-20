@@ -18,16 +18,13 @@ nix run .#serve-dev
 nix run .#serve-dev -- 8080
 ```
 
-Build the packaged site and zip artifact:
+Build the packaged site:
 
 ```sh
 nix build
 ```
 
-The build output contains:
-
-- `result/share/linerage/` — static site
-- `result/linerage.zip` — zipped packaged site
+The build output contains the static site at `result/share/linerage/`.
 
 Serve the Nix-built package:
 
@@ -41,13 +38,4 @@ Run flake checks:
 
 ```sh
 nix flake check
-```
-
-## Build command
-
-If you are already inside a shell with `python3` available, the build script can be run directly:
-
-```sh
-mkdir -p build
-(cd util && ./build.sh)
 ```

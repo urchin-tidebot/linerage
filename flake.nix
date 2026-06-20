@@ -28,25 +28,45 @@
             version = "0-unstable";
             src = pkgs.lib.cleanSource ./.;
 
-            nativeBuildInputs = [
-              pkgs.python3
-            ];
-
             buildPhase = ''
               runHook preBuild
-              mkdir -p build
-              (cd util && sh ./build.sh)
+              buildPath=build/linerage
+              staticPath=static
+
+              rm -rf "$buildPath"
+              mkdir -p "$buildPath/js" "$buildPath/css" "$buildPath/levels" "$buildPath/images"
+
+              cp -R "$staticPath/js/extern" "$buildPath/js/extern"
+              cp "$staticPath/built.html" "$buildPath/index.html"
+              cp "$staticPath/manifest.json" "$buildPath/manifest.json"
+              cp -R "$staticPath/css/." "$buildPath/css/"
+              cp -R "$staticPath/images/." "$buildPath/images/"
+              cp -R "$staticPath/levels/." "$buildPath/levels/"
+              mv "$buildPath"/images/icon*.png "$buildPath"/
+
+              cat \
+                "$staticPath/js/lib/Class.js" \
+                "$staticPath/js/lib/Dom.js" \
+                "$staticPath/js/lib/Util.js" \
+                "$staticPath/js/lib/Clock.js" \
+                "$staticPath/js/lib/Collision.js" \
+                "$staticPath/js/core/Input.js" \
+                "$staticPath/js/core/Player.js" \
+                "$staticPath/js/core/Entity.js" \
+                "$staticPath/js/core/Level.js" \
+                "$staticPath/js/core/Hud.js" \
+                "$staticPath/js/core/Game.js" \
+                "$staticPath/js/core/Multiplayer.js" \
+                "$staticPath/js/core/TouchControls.js" \
+                "$staticPath/js/core/Init.js" \
+                > "$buildPath/js/all.js"
               runHook postBuild
             '';
 
             installPhase = ''
               runHook preInstall
-              mkdir -p $out/share $out/nix-support
+              mkdir -p $out/share
               cp -r build/linerage $out/share/linerage
-              cp build/linerage.zip $out/linerage.zip
-              cat > $out/nix-support/hydra-build-products <<EOF
-              file zip $out/linerage.zip
-              EOF
               runHook postInstall
             '';
           };
@@ -109,7 +129,7 @@
           shellHook = ''
             echo "LineRage dev shell"
             echo "  nix run .#serve-dev -- [port]    # serve ./static"
-            echo "  nix build                        # bundle JS and build packaged site + linerage.zip"
+            echo "  nix build                        # bundle JS and build packaged site"
             echo "  nix run .#serve-built -- [port]  # serve the Nix-built package"
           '';
         };

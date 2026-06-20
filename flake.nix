@@ -78,6 +78,10 @@
 
       apps = forAllSystems (pkgs:
         let
+          browserPython = pkgs.python3.withPackages (python-pkgs: [
+            python-pkgs.playwright
+          ]);
+
           serve-dev = pkgs.writeShellApplication {
             name = "linerage-serve-dev";
             runtimeInputs = [ pkgs.python3 ];
@@ -98,6 +102,22 @@
               exec python3 -m http.server "$port" --directory "$site"
             '';
           };
+
+          browser-smoke = pkgs.writeShellApplication {
+            name = "linerage-browser-smoke";
+            runtimeInputs = [
+              browserPython
+              pkgs.chromium
+            ];
+            text = ''
+              site="${self.packages.${pkgs.stdenv.hostPlatform.system}.default}/share/linerage"
+              out="''${1:-artifacts/browser-smoke}"
+              exec python ${./scripts/browser-smoke.py} \
+                --site "$site" \
+                --out "$out" \
+                --chromium ${pkgs.chromium}/bin/chromium
+            '';
+          };
         in
         {
           default = {
@@ -115,25 +135,38 @@
             program = "${serve-built}/bin/linerage-serve-built";
             meta.description = "Serve the Nix-built LineRage package";
           };
+          browser-smoke = {
+            type = "app";
+            program = "${browser-smoke}/bin/linerage-browser-smoke";
+            meta.description = "Run browser smoke tests and save screenshots/metrics";
+          };
         });
 
-      devShells = forAllSystems (pkgs: {
-        default = pkgs.mkShell {
-          packages = [
-            pkgs.python3
-            pkgs.nodejs
-            pkgs.chromium
-            pkgs.nixpkgs-fmt
-          ];
+      devShells = forAllSystems (pkgs:
+        let
+          browserPython = pkgs.python3.withPackages (python-pkgs: [
+            python-pkgs.playwright
+          ]);
+        in
+        {
+          default = pkgs.mkShell {
+            packages = [
+              pkgs.python3
+              browserPython
+              pkgs.nodejs
+              pkgs.chromium
+              pkgs.nixpkgs-fmt
+            ];
 
-          shellHook = ''
-            echo "LineRage dev shell"
-            echo "  nix run .#serve-dev -- [port]    # serve ./static"
-            echo "  nix build                        # bundle JS and build packaged site"
-            echo "  nix run .#serve-built -- [port]  # serve the Nix-built package"
-          '';
-        };
-      });
+            shellHook = ''
+              echo "LineRage dev shell"
+              echo "  nix run .#serve-dev -- [port]       # serve ./static"
+              echo "  nix build                           # bundle JS and build packaged site"
+              echo "  nix run .#serve-built -- [port]     # serve the Nix-built package"
+              echo "  nix run .#browser-smoke -- [outdir] # screenshots, console, metrics"
+            '';
+          };
+        });
 
       checks = forAllSystems (pkgs: {
         default = self.packages.${pkgs.stdenv.hostPlatform.system}.default;

@@ -34,37 +34,22 @@ nix run .#serve-built
 nix run .#serve-built -- 8080
 ```
 
-Run flake checks, including the multiplayer TURN configuration and Worker tests:
+Run flake checks, including the direct P2P multiplayer configuration test:
 
 ```sh
 nix flake check
 ```
 
-## WebRTC relay
+## Direct P2P multiplayer
 
-Online games fetch short-lived Cloudflare Realtime TURN credentials from:
+Online games use STUN to discover a direct WebRTC route between players. TURN
+relays are intentionally not configured: if direct connectivity is blocked,
+LineRage reports the failure instead of falling back to a high-latency relay.
 
-```text
-https://linerage-turn-credentials.tide-shazow.workers.dev/ice
-```
-
-The credential Worker lives in `cloudflare-worker/`. Its `TURN_KEY_ID` and
-`TURN_KEY_SECRET` values are Cloudflare Worker secrets and must never be
-committed. Deploy or update it with a Cloudflare token scoped to Workers
-Scripts Write:
-
-```sh
-cd cloudflare-worker
-wrangler secret put TURN_KEY_ID
-wrangler secret put TURN_KEY_SECRET
-wrangler deploy
-```
-
-The `/ice` endpoint only serves browser requests from the deployed LineRage
-GitHub Pages origin and local development origins. Verify the actual relay path,
-not only direct peer connectivity, by gathering candidates with
-`iceTransportPolicy: "relay"`; the result must include at least one `relay`
-candidate.
+Public and managed Wi-Fi commonly enables wireless client isolation or blocks
+UDP hole punching. In those environments, use a hotspot or another network.
+VPNs, host firewalls, symmetric NAT, and disabled NAT hairpinning can also block
+direct connections.
 
 ## Browser smoke screenshots
 

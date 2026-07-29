@@ -9,6 +9,7 @@ function Multiplayer(game) {
     this.tick = 0;
     this.lastTick = 0;
     this.ready = false;
+    this.sessionGeneration = 0;
     this.onlineLevel = new Level({
         "name": "Online Deathmatch",
         "url": "levels/deathmatch/blank.png",
@@ -23,6 +24,7 @@ function Multiplayer(game) {
 }
 
 Multiplayer.PROTOCOL = 1;
+Multiplayer.TURN_CREDENTIALS_URL = 'https://linerage-turn-credentials.tide-shazow.workers.dev/ice';
 
 Multiplayer.prototype = {
     draw_ui: function() {
@@ -60,6 +62,24 @@ Multiplayer.prototype = {
     },
     invite_url: function(hostId) {
         return location.href.replace(/#.*$/, '') + '#join=' + encodeURIComponent(hostId);
+    },
+    create_peer: function(peerId) {
+        return fetch(Multiplayer.TURN_CREDENTIALS_URL, {cache: 'no-store'})
+            .then(function(response) {
+                if(!response.ok) throw new Error('TURN credentials returned HTTP ' + response.status);
+                return response.json();
+            })
+            .then(function(config) {
+                if(!config || !config.iceServers || !config.iceServers.length) {
+                    throw new Error('TURN credentials did not include ICE servers');
+                }
+                return new Peer(peerId, {
+                    config: {
+                        iceServers: config.iceServers,
+                        sdpSemantics: 'unified-plan'
+                    }
+                });
+            });
     },
     set_room_code: function(hostId) {
         $('#net-room').text('Room: ' + hostId);
@@ -99,23 +119,35 @@ Multiplayer.prototype = {
         }
         var self = this;
         this.close_existing_session();
+        var sessionGeneration = this.sessionGeneration;
         this.role = 'host';
         this.localIndex = 0;
         $('#network').addClass('online');
         $('#net-copy').text('Copy Invite');
-        this.peer = new Peer(this.random_token());
-        this.peer.on('open', function(id) {
-            self.set_room_code(id);
-            $('#net-link').val(self.invite_url(id));
-            self.update_lobby();
-            self.prepare_online_game(function() {
-                self.ready = true;
+        this.set_status('Preparing secure relay...');
+        this.create_peer(this.random_token()).then(function(peer) {
+            if(self.role != 'host' || self.sessionGeneration != sessionGeneration) {
+                peer.destroy();
+                return;
+            }
+            self.peer = peer;
+            peer.on('open', function(id) {
+                self.set_room_code(id);
+                $('#net-link').val(self.invite_url(id));
+                self.update_lobby();
+                self.prepare_online_game(function() {
+                    self.ready = true;
+                });
             });
-        });
-        this.peer.on('connection', function(conn) { self.accept(conn); });
-        this.peer.on('error', function(err) {
-            if(err && err.type == 'unavailable-id') self.set_status('Room token taken. Try Host Game again.');
-            else self.set_status('Host error: ' + err);
+            peer.on('connection', function(conn) { self.accept(conn); });
+            peer.on('error', function(err) {
+                if(err && err.type == 'unavailable-id') self.set_status('Room token taken. Try Host Game again.');
+                else self.set_status('Host error: ' + err);
+            });
+        }).catch(function(err) {
+            if(self.role == 'host' && self.sessionGeneration == sessionGeneration) {
+                self.set_status('Relay setup failed: ' + err.message);
+            }
         });
     },
     autojoin_from_hash: function() {
@@ -129,24 +161,36 @@ Multiplayer.prototype = {
         }
         var self = this;
         this.close_existing_session();
+        var sessionGeneration = this.sessionGeneration;
         this.role = 'guest';
         $('#network').addClass('online');
         $('#net-copy').text('Copy Invite');
         this.set_room_code(hostId);
         $('#net-link').val(this.invite_url(hostId));
         set_touch_start_label('Ready?');
-        this.peer = new Peer();
-        this.peer.on('open', function() {
-            self.set_status('Connecting to host...');
-            self.hostConn = self.peer.connect(hostId, {reliable: true});
-            self.hostConn.on('open', function() {
-                self.send(self.hostConn, {type: 'hello', protocol: Multiplayer.PROTOCOL});
+        this.set_status('Preparing secure relay...');
+        this.create_peer().then(function(peer) {
+            if(self.role != 'guest' || self.sessionGeneration != sessionGeneration) {
+                peer.destroy();
+                return;
+            }
+            self.peer = peer;
+            peer.on('open', function() {
+                self.set_status('Connecting to host...');
+                self.hostConn = peer.connect(hostId, {reliable: true});
+                self.hostConn.on('open', function() {
+                    self.send(self.hostConn, {type: 'hello', protocol: Multiplayer.PROTOCOL});
+                });
+                self.hostConn.on('data', function(msg) { self.receive_from_host(msg); });
+                self.hostConn.on('close', function() { self.set_status('Disconnected from host.'); });
+                self.hostConn.on('error', function(err) { self.set_status('Connection error: ' + err); });
             });
-            self.hostConn.on('data', function(msg) { self.receive_from_host(msg); });
-            self.hostConn.on('close', function() { self.set_status('Disconnected from host.'); });
-            self.hostConn.on('error', function(err) { self.set_status('Connection error: ' + err); });
+            peer.on('error', function(err) { self.set_status('Join error: ' + err); });
+        }).catch(function(err) {
+            if(self.role == 'guest' && self.sessionGeneration == sessionGeneration) {
+                self.set_status('Relay setup failed: ' + err.message);
+            }
         });
-        this.peer.on('error', function(err) { self.set_status('Join error: ' + err); });
     },
     accept: function(conn) {
         var self = this;
@@ -200,6 +244,7 @@ Multiplayer.prototype = {
         });
     },
     close_existing_session: function() {
+        this.sessionGeneration++;
         if(this.hostConn && this.hostConn.close) this.hostConn.close();
         for(var i=0; i<this.conns.length; i++) {
             if(this.conns[i] && this.conns[i].close) this.conns[i].close();

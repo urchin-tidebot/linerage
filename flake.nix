@@ -170,6 +170,19 @@
 
       checks = forAllSystems (pkgs: {
         default = self.packages.${pkgs.stdenv.hostPlatform.system}.default;
+        tests = pkgs.runCommand "linerage-tests"
+          {
+            src = pkgs.lib.cleanSource ./.;
+            nativeBuildInputs = [ pkgs.nodejs ];
+          }
+          ''
+            cp -R "$src" source
+            chmod -R u+w source
+            cd source
+            node tests/multiplayer-turn-config.test.js
+            node --test tests/turn-credentials-worker.test.mjs
+            touch "$out"
+          '';
       });
 
       formatter = forAllSystems (pkgs: pkgs.nixpkgs-fmt);

@@ -76,11 +76,12 @@ vm.runInContext(
     multiplayer.conns = [];
     multiplayer.sessionGeneration = 0;
     multiplayer.lastTick = 0;
-    multiplayer.set_status = function() {};
+    const statuses = [];
+    multiplayer.set_status = function(status) { statuses.push(status); };
     multiplayer.random_token = function() { return 'room-code'; };
     const pending = [];
     multiplayer.create_peer = function() {
-        return new Promise(resolve => pending.push(resolve));
+        return new Promise((resolve, reject) => pending.push({resolve, reject}));
     };
     const fakePeer = function() {
         return {
@@ -93,14 +94,24 @@ vm.runInContext(
     multiplayer.host();
     multiplayer.host();
     const stalePeer = fakePeer();
-    pending[0](stalePeer);
+    pending[0].resolve(stalePeer);
     await new Promise(resolve => setTimeout(resolve, 0));
     assert.equal(stalePeer.destroyed, true, 'superseded host setup must destroy its Peer');
 
     const currentPeer = fakePeer();
-    pending[1](currentPeer);
+    pending[1].resolve(currentPeer);
     await new Promise(resolve => setTimeout(resolve, 0));
     assert.equal(multiplayer.peer, currentPeer, 'latest host setup must remain active');
+
+    statuses.length = 0;
+    multiplayer.host();
+    multiplayer.host();
+    pending[2].reject(new Error('stale setup failed'));
+    await new Promise(resolve => setTimeout(resolve, 0));
+    assert.ok(
+        !statuses.some(status => status.indexOf('stale setup failed') >= 0),
+        'failure from a superseded setup must not overwrite current status'
+    );
 
     console.log('multiplayer TURN configuration: ok');
 })().catch(error => {

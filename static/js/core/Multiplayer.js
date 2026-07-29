@@ -145,7 +145,9 @@ Multiplayer.prototype = {
                 else self.set_status('Host error: ' + err);
             });
         }).catch(function(err) {
-            self.set_status('Relay setup failed: ' + err.message);
+            if(self.role == 'host' && self.sessionGeneration == sessionGeneration) {
+                self.set_status('Relay setup failed: ' + err.message);
+            }
         });
     },
     autojoin_from_hash: function() {
@@ -185,7 +187,9 @@ Multiplayer.prototype = {
             });
             peer.on('error', function(err) { self.set_status('Join error: ' + err); });
         }).catch(function(err) {
-            self.set_status('Relay setup failed: ' + err.message);
+            if(self.role == 'guest' && self.sessionGeneration == sessionGeneration) {
+                self.set_status('Relay setup failed: ' + err.message);
+            }
         });
     },
     accept: function(conn) {

@@ -179,8 +179,7 @@
             cp -R "$src" source
             chmod -R u+w source
             cd source
-            node tests/multiplayer-turn-config.test.js
-            node --test tests/turn-credentials-worker.test.mjs
+            node tests/multiplayer-p2p-config.test.js
             touch "$out"
           '';
       });

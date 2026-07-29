@@ -24,7 +24,10 @@ function Multiplayer(game) {
 }
 
 Multiplayer.PROTOCOL = 1;
-Multiplayer.TURN_CREDENTIALS_URL = 'https://linerage-turn-credentials.tide-shazow.workers.dev/ice';
+Multiplayer.ICE_SERVERS = [
+    {urls: 'stun:stun.cloudflare.com:3478'},
+    {urls: 'stun:stun.l.google.com:19302'}
+];
 
 Multiplayer.prototype = {
     draw_ui: function() {
@@ -41,6 +44,16 @@ Multiplayer.prototype = {
     },
     set_status: function(s) {
         $('#net-status').text(s);
+    },
+    direct_error_status: function(err, fallback) {
+        var text = String(err || '');
+        if(err && err.type == 'peer-unavailable') {
+            return 'Host unavailable. Ask the host for a new invite.';
+        }
+        if((err && err.type == 'webrtc') || /negotiation|ice|connection.*failed/i.test(text)) {
+            return 'Direct P2P blocked by this network. Try a hotspot or another network.';
+        }
+        return fallback + ': ' + text;
     },
     joined_count: function() {
         return this.role == 'host' ? this.conns.length + 1 : this.game.num_players;
@@ -64,22 +77,15 @@ Multiplayer.prototype = {
         return location.href.replace(/#.*$/, '') + '#join=' + encodeURIComponent(hostId);
     },
     create_peer: function(peerId) {
-        return fetch(Multiplayer.TURN_CREDENTIALS_URL, {cache: 'no-store'})
-            .then(function(response) {
-                if(!response.ok) throw new Error('TURN credentials returned HTTP ' + response.status);
-                return response.json();
-            })
-            .then(function(config) {
-                if(!config || !config.iceServers || !config.iceServers.length) {
-                    throw new Error('TURN credentials did not include ICE servers');
+        return Promise.resolve().then(function() {
+            return new Peer(peerId, {
+                config: {
+                    iceServers: Multiplayer.ICE_SERVERS,
+                    iceTransportPolicy: 'all',
+                    sdpSemantics: 'unified-plan'
                 }
-                return new Peer(peerId, {
-                    config: {
-                        iceServers: config.iceServers,
-                        sdpSemantics: 'unified-plan'
-                    }
-                });
             });
+        });
     },
     set_room_code: function(hostId) {
         $('#net-room').text('Room: ' + hostId);
@@ -124,7 +130,7 @@ Multiplayer.prototype = {
         this.localIndex = 0;
         $('#network').addClass('online');
         $('#net-copy').text('Copy Invite');
-        this.set_status('Preparing secure relay...');
+        this.set_status('Preparing direct P2P...');
         this.create_peer(this.random_token()).then(function(peer) {
             if(self.role != 'host' || self.sessionGeneration != sessionGeneration) {
                 peer.destroy();
@@ -142,11 +148,11 @@ Multiplayer.prototype = {
             peer.on('connection', function(conn) { self.accept(conn); });
             peer.on('error', function(err) {
                 if(err && err.type == 'unavailable-id') self.set_status('Room token taken. Try Host Game again.');
-                else self.set_status('Host error: ' + err);
+                else self.set_status(self.direct_error_status(err, 'Host error'));
             });
         }).catch(function(err) {
             if(self.role == 'host' && self.sessionGeneration == sessionGeneration) {
-                self.set_status('Relay setup failed: ' + err.message);
+                self.set_status('Direct P2P setup failed: ' + err.message);
             }
         });
     },
@@ -168,7 +174,7 @@ Multiplayer.prototype = {
         this.set_room_code(hostId);
         $('#net-link').val(this.invite_url(hostId));
         set_touch_start_label('Ready?');
-        this.set_status('Preparing secure relay...');
+        this.set_status('Preparing direct P2P...');
         this.create_peer().then(function(peer) {
             if(self.role != 'guest' || self.sessionGeneration != sessionGeneration) {
                 peer.destroy();
@@ -183,12 +189,16 @@ Multiplayer.prototype = {
                 });
                 self.hostConn.on('data', function(msg) { self.receive_from_host(msg); });
                 self.hostConn.on('close', function() { self.set_status('Disconnected from host.'); });
-                self.hostConn.on('error', function(err) { self.set_status('Connection error: ' + err); });
+                self.hostConn.on('error', function(err) {
+                    self.set_status(self.direct_error_status(err, 'Connection error'));
+                });
             });
-            peer.on('error', function(err) { self.set_status('Join error: ' + err); });
+            peer.on('error', function(err) {
+                self.set_status(self.direct_error_status(err, 'Join error'));
+            });
         }).catch(function(err) {
             if(self.role == 'guest' && self.sessionGeneration == sessionGeneration) {
-                self.set_status('Relay setup failed: ' + err.message);
+                self.set_status('Direct P2P setup failed: ' + err.message);
             }
         });
     },

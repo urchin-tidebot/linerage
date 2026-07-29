@@ -32,41 +32,39 @@ vm.runInContext(
 );
 
 (async () => {
-    const iceServers = [
-        {urls: ['stun:stun.cloudflare.com:3478', 'stun:stun.cloudflare.com:53']},
-        {
-            urls: [
-                'turn:turn.cloudflare.com:3478?transport=udp',
-                'turn:turn.cloudflare.com:80?transport=tcp',
-                'turns:turn.cloudflare.com:443?transport=tcp'
-            ],
-            username: 'test-user',
-            credential: 'test-credential'
-        }
-    ];
-    let requestedUrl = null;
-    context.fetch = async function(url) {
-        requestedUrl = url;
-        return {ok: true, json: async () => ({iceServers})};
+    context.fetch = async function() {
+        throw new Error('P2P-only setup must not fetch TURN credentials');
     };
 
     assert.equal(typeof context.Multiplayer.prototype.create_peer, 'function');
 
     const hostPeer = await context.Multiplayer.prototype.create_peer('room-code');
     assert.equal(hostPeer.id, 'room-code');
-    assert.match(requestedUrl, /^https:\/\//);
-    assert.ok(!requestedUrl.includes('API_KEY'), 'deployed URL must contain a configured key');
-    assert.deepEqual(created[0].options.config.iceServers, iceServers);
+    const iceConfig = created[0].options.config;
+    assert.equal(iceConfig.iceTransportPolicy, 'all');
+    assert.ok(iceConfig.iceServers.length > 0, 'STUN servers must be configured');
     assert.ok(
-        created[0].options.config.iceServers.some(server =>
-            [].concat(server.urls).some(url => url.startsWith('turns:') && url.includes(':443'))
+        iceConfig.iceServers.every(server =>
+            [].concat(server.urls).every(url => url.startsWith('stun:'))
         ),
-        'TURN/TLS on port 443 must be available for restrictive networks'
+        'P2P-only mode must never configure a TURN relay'
+    );
+    assert.ok(
+        iceConfig.iceServers.every(server => !server.username && !server.credential),
+        'P2P-only mode must not include relay credentials'
     );
 
     const guestPeer = await context.Multiplayer.prototype.create_peer();
     assert.equal(guestPeer.id, undefined);
-    assert.deepEqual(created[1].options.config.iceServers, iceServers);
+    assert.deepEqual(created[1].options.config.iceServers, iceConfig.iceServers);
+    assert.match(
+        context.Multiplayer.prototype.direct_error_status({type: 'webrtc'}, 'Join error'),
+        /Direct P2P blocked/
+    );
+    assert.match(
+        context.Multiplayer.prototype.direct_error_status({type: 'peer-unavailable'}, 'Join error'),
+        /Host unavailable/
+    );
 
     const multiplayer = Object.create(context.Multiplayer.prototype);
     multiplayer.game = {};
@@ -113,7 +111,7 @@ vm.runInContext(
         'failure from a superseded setup must not overwrite current status'
     );
 
-    console.log('multiplayer TURN configuration: ok');
+    console.log('multiplayer P2P configuration: ok');
 })().catch(error => {
     console.error(error);
     process.exitCode = 1;

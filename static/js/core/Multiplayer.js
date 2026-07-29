@@ -9,6 +9,7 @@ function Multiplayer(game) {
     this.tick = 0;
     this.lastTick = 0;
     this.ready = false;
+    this.sessionGeneration = 0;
     this.onlineLevel = new Level({
         "name": "Online Deathmatch",
         "url": "levels/deathmatch/blank.png",
@@ -118,13 +119,14 @@ Multiplayer.prototype = {
         }
         var self = this;
         this.close_existing_session();
+        var sessionGeneration = this.sessionGeneration;
         this.role = 'host';
         this.localIndex = 0;
         $('#network').addClass('online');
         $('#net-copy').text('Copy Invite');
         this.set_status('Preparing secure relay...');
         this.create_peer(this.random_token()).then(function(peer) {
-            if(self.role != 'host') {
+            if(self.role != 'host' || self.sessionGeneration != sessionGeneration) {
                 peer.destroy();
                 return;
             }
@@ -157,6 +159,7 @@ Multiplayer.prototype = {
         }
         var self = this;
         this.close_existing_session();
+        var sessionGeneration = this.sessionGeneration;
         this.role = 'guest';
         $('#network').addClass('online');
         $('#net-copy').text('Copy Invite');
@@ -165,7 +168,7 @@ Multiplayer.prototype = {
         set_touch_start_label('Ready?');
         this.set_status('Preparing secure relay...');
         this.create_peer().then(function(peer) {
-            if(self.role != 'guest') {
+            if(self.role != 'guest' || self.sessionGeneration != sessionGeneration) {
                 peer.destroy();
                 return;
             }
@@ -237,6 +240,7 @@ Multiplayer.prototype = {
         });
     },
     close_existing_session: function() {
+        this.sessionGeneration++;
         if(this.hostConn && this.hostConn.close) this.hostConn.close();
         for(var i=0; i<this.conns.length; i++) {
             if(this.conns[i] && this.conns[i].close) this.conns[i].close();

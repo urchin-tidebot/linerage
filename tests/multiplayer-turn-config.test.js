@@ -68,6 +68,40 @@ vm.runInContext(
     assert.equal(guestPeer.id, undefined);
     assert.deepEqual(created[1].options.config.iceServers, iceServers);
 
+    const multiplayer = Object.create(context.Multiplayer.prototype);
+    multiplayer.game = {};
+    multiplayer.role = 'offline';
+    multiplayer.peer = null;
+    multiplayer.hostConn = null;
+    multiplayer.conns = [];
+    multiplayer.sessionGeneration = 0;
+    multiplayer.lastTick = 0;
+    multiplayer.set_status = function() {};
+    multiplayer.random_token = function() { return 'room-code'; };
+    const pending = [];
+    multiplayer.create_peer = function() {
+        return new Promise(resolve => pending.push(resolve));
+    };
+    const fakePeer = function() {
+        return {
+            destroyed: false,
+            destroy() { this.destroyed = true; },
+            on() {}
+        };
+    };
+
+    multiplayer.host();
+    multiplayer.host();
+    const stalePeer = fakePeer();
+    pending[0](stalePeer);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    assert.equal(stalePeer.destroyed, true, 'superseded host setup must destroy its Peer');
+
+    const currentPeer = fakePeer();
+    pending[1](currentPeer);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    assert.equal(multiplayer.peer, currentPeer, 'latest host setup must remain active');
+
     console.log('multiplayer TURN configuration: ok');
 })().catch(error => {
     console.error(error);

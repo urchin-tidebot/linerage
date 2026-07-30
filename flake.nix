@@ -180,6 +180,7 @@
             chmod -R u+w source
             cd source
             node tests/multiplayer-p2p-config.test.js
+            node tests/multiplayer-reliability.test.js
             touch "$out"
           '';
       });

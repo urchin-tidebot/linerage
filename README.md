@@ -46,6 +46,12 @@ Online games use STUN to discover a direct WebRTC route between players. TURN
 relays are intentionally not configured: if direct connectivity is blocked,
 LineRage reports the failure instead of falling back to a high-latency relay.
 
+LineRage retries failed direct connections with fresh ICE mappings, reconnects
+transient PeerJS signaling failures while preserving the room, and displays the
+selected candidate types, transport protocol, and live round-trip time in the
+lobby. A failed connection after all retries means the network does not offer a
+usable direct WebRTC path.
+
 Public and managed Wi-Fi commonly enables wireless client isolation or blocks
 UDP hole punching. In those environments, use a hotspot or another network.
 VPNs, host firewalls, symmetric NAT, and disabled NAT hairpinning can also block

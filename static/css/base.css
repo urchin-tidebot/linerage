@@ -97,7 +97,7 @@ h1.active {
     line-height: 1.35em;
     overflow-wrap: anywhere;
 }
-#net-room, #net-players {
+#net-room, #net-players, #net-route {
     display: inline-block;
     padding: 2px 6px;
     border: 1px solid #3d3d3d;

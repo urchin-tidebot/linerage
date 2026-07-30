@@ -10,6 +10,9 @@ function Multiplayer(game) {
     this.lastTick = 0;
     this.ready = false;
     this.sessionGeneration = 0;
+    this.routeDiagnosticTimer = null;
+    this.routeDiagnosticConnection = null;
+    this.guestConnectActive = false;
     this.onlineLevel = new Level({
         "name": "Online Deathmatch",
         "url": "levels/deathmatch/blank.png",
@@ -34,7 +37,7 @@ Multiplayer.prototype = {
         var self = this;
         var box = $('<div id="network"></div>');
         box.append('<div id="net-controls"><button id="net-host">Host Game</button><button id="net-copy" class="online-only">Copy Invite</button><input id="net-link" class="online-only" readonly="readonly" aria-label="Invite link" title="Click to select invite link" placeholder="Invite link" /></div>');
-        box.append('<div id="net-meta"><span id="net-room" class="online-only">Room: —</span><span id="net-players">Joined: 1/4</span><span id="net-status">Offline hotseat mode.</span></div>');
+        box.append('<div id="net-meta"><span id="net-room" class="online-only">Room: —</span><span id="net-players">Joined: 1/4</span><span id="net-route" class="online-only">Route: checking…</span><span id="net-status">Offline hotseat mode.</span></div>');
         $('#content').prepend(box);
 
         $('#net-host').click(function() { self.host(); });
@@ -45,6 +48,61 @@ Multiplayer.prototype = {
     set_status: function(s) {
         $('#net-status').text(s);
     },
+    format_route_stats: function(local, remote, pair) {
+        var localType = local && local.candidateType || '?';
+        var remoteType = remote && remote.candidateType || '?';
+        var route = localType == 'relay' || remoteType == 'relay' ? 'Relay' : 'Direct';
+        var protocol = String(local && local.protocol || remote && remote.protocol || '?').toUpperCase();
+        var rtt = pair && typeof pair.currentRoundTripTime == 'number'
+            ? Math.round(pair.currentRoundTripTime * 1000) + ' ms'
+            : 'RTT unavailable';
+        return route + ' ' + localType + '↔' + remoteType + ' · ' + protocol + ' · ' + rtt;
+    },
+    update_route_diagnostics: function(conn) {
+        var self = this;
+        var ownedAtStart = this.routeDiagnosticConnection === conn;
+        if(this.routeDiagnosticConnection && !ownedAtStart) return Promise.resolve(null);
+        if(!conn || !conn.peerConnection || !conn.peerConnection.getStats) return Promise.resolve(null);
+        return conn.peerConnection.getStats().then(function(stats) {
+            if(ownedAtStart && self.routeDiagnosticConnection !== conn) return null;
+            var values = [];
+            stats.forEach(function(value) { values.push(value); });
+            var transport = null;
+            var pair = null;
+            for(var i=0; i<values.length; i++) {
+                if(values[i].type == 'transport' && values[i].selectedCandidatePairId) transport = values[i];
+            }
+            if(transport) pair = stats.get(transport.selectedCandidatePairId);
+            if(!pair) {
+                for(var j=0; j<values.length; j++) {
+                    if(values[j].type == 'candidate-pair' && values[j].state == 'succeeded' &&
+                        (values[j].nominated || values[j].selected)) pair = values[j];
+                }
+            }
+            if(!pair) return null;
+            var local = stats.get(pair.localCandidateId);
+            var remote = stats.get(pair.remoteCandidateId);
+            var text = self.format_route_stats(local, remote, pair);
+            $('#net-route').text('Route: ' + text);
+            return text;
+        }, function() { return null; });
+    },
+    start_route_diagnostics: function(conn) {
+        var self = this;
+        this.stop_route_diagnostics();
+        this.routeDiagnosticConnection = conn;
+        this.update_route_diagnostics(conn);
+        this.routeDiagnosticTimer = setInterval(function() {
+            self.update_route_diagnostics(conn);
+        }, 2000);
+    },
+    stop_route_diagnostics: function(conn) {
+        if(conn && this.routeDiagnosticConnection !== conn) return;
+        if(this.routeDiagnosticTimer) clearInterval(this.routeDiagnosticTimer);
+        this.routeDiagnosticTimer = null;
+        this.routeDiagnosticConnection = null;
+        $('#net-route').text('Route: checking…');
+    },
     direct_error_status: function(err, fallback) {
         var text = String(err || '');
         if(err && err.type == 'peer-unavailable') {
@@ -54,6 +112,22 @@ Multiplayer.prototype = {
             return 'Direct P2P blocked by this network. Try a hotspot or another network.';
         }
         return fallback + ': ' + text;
+    },
+    handle_peer_disconnected: function(peer, sessionGeneration) {
+        if(this.sessionGeneration != sessionGeneration || peer.destroyed) return;
+        if(peer._linerageReconnectScheduled) return;
+        var self = this;
+        peer._linerageReconnectScheduled = true;
+        this.set_status('PeerJS signaling disconnected. Reconnecting...');
+        setTimeout(function() {
+            peer._linerageReconnectScheduled = false;
+            if(self.sessionGeneration != sessionGeneration || peer.destroyed || !peer.disconnected) return;
+            try {
+                peer.reconnect();
+            } catch(err) {
+                self.set_status('Signaling reconnect failed: ' + err.message);
+            }
+        }, 750);
     },
     joined_count: function() {
         return this.role == 'host' ? this.conns.length + 1 : this.game.num_players;
@@ -137,7 +211,13 @@ Multiplayer.prototype = {
                 return;
             }
             self.peer = peer;
+            var initialized = false;
             peer.on('open', function(id) {
+                if(initialized) {
+                    self.set_status('PeerJS signaling restored.');
+                    return;
+                }
+                initialized = true;
                 self.set_room_code(id);
                 $('#net-link').val(self.invite_url(id));
                 self.update_lobby();
@@ -146,6 +226,9 @@ Multiplayer.prototype = {
                 });
             });
             peer.on('connection', function(conn) { self.accept(conn); });
+            peer.on('disconnected', function() {
+                self.handle_peer_disconnected(peer, sessionGeneration);
+            });
             peer.on('error', function(err) {
                 if(err && err.type == 'unavailable-id') self.set_status('Room token taken. Try Host Game again.');
                 else self.set_status(self.direct_error_status(err, 'Host error'));
@@ -182,16 +265,15 @@ Multiplayer.prototype = {
             }
             self.peer = peer;
             peer.on('open', function() {
-                self.set_status('Connecting to host...');
-                self.hostConn = peer.connect(hostId, {reliable: true});
-                self.hostConn.on('open', function() {
-                    self.send(self.hostConn, {type: 'hello', protocol: Multiplayer.PROTOCOL});
-                });
-                self.hostConn.on('data', function(msg) { self.receive_from_host(msg); });
-                self.hostConn.on('close', function() { self.set_status('Disconnected from host.'); });
-                self.hostConn.on('error', function(err) {
-                    self.set_status(self.direct_error_status(err, 'Connection error'));
-                });
+                if(self.hostConn && self.hostConn.open) {
+                    self.set_status('PeerJS signaling restored.');
+                    return;
+                }
+                if(self.guestConnectActive) return;
+                self.connect_to_host(hostId, 1, sessionGeneration);
+            });
+            peer.on('disconnected', function() {
+                self.handle_peer_disconnected(peer, sessionGeneration);
             });
             peer.on('error', function(err) {
                 self.set_status(self.direct_error_status(err, 'Join error'));
@@ -200,6 +282,73 @@ Multiplayer.prototype = {
             if(self.role == 'guest' && self.sessionGeneration == sessionGeneration) {
                 self.set_status('Direct P2P setup failed: ' + err.message);
             }
+        });
+    },
+    connect_to_host: function(hostId, attempt, sessionGeneration) {
+        if(this.role != 'guest' || this.sessionGeneration != sessionGeneration) return;
+        this.guestConnectActive = true;
+        var self = this;
+        var retryScheduled = false;
+        var opened = false;
+        if(!this.peer || this.peer.disconnected) {
+            this.guestConnectActive = false;
+            this.set_status('Waiting for PeerJS signaling to reconnect...');
+            return;
+        }
+        this.set_status('Connecting directly to host (attempt ' + attempt + '/3)...');
+        var conn = null;
+        try {
+            conn = this.peer.connect(hostId, {reliable: true});
+        } catch(err) {
+            this.guestConnectActive = false;
+            this.set_status('Waiting for PeerJS signaling to reconnect...');
+            return;
+        }
+        if(!conn || !conn.on) {
+            this.guestConnectActive = false;
+            this.set_status('Waiting for PeerJS signaling to reconnect...');
+            return;
+        }
+        this.hostConn = conn;
+
+        var retry = function(err) {
+            if(retryScheduled || opened) return;
+            retryScheduled = true;
+            if(conn.close) conn.close();
+            if(self.role != 'guest' || self.sessionGeneration != sessionGeneration) return;
+            if(attempt >= 3) {
+                self.guestConnectActive = false;
+                self.set_status(self.direct_error_status(err, 'Connection error'));
+                return;
+            }
+            self.set_status('Direct connection failed. Retrying with fresh ICE...');
+            setTimeout(function() {
+                if(self.role == 'guest' && self.sessionGeneration == sessionGeneration) {
+                    self.connect_to_host(hostId, attempt + 1, sessionGeneration);
+                }
+            }, attempt * 500);
+        };
+
+        conn.on('open', function() {
+            if(retryScheduled || self.hostConn !== conn) {
+                if(conn.close) conn.close();
+                return;
+            }
+            opened = true;
+            self.start_route_diagnostics(conn);
+            self.send(conn, {type: 'hello', protocol: Multiplayer.PROTOCOL});
+        });
+        conn.on('data', function(msg) { self.receive_from_host(msg); });
+        conn.on('close', function() {
+            if(opened) {
+                self.guestConnectActive = false;
+                self.stop_route_diagnostics(conn);
+                self.set_status('Disconnected from host.');
+            } else retry(new Error('Direct connection closed before opening'));
+        });
+        conn.on('error', function(err) {
+            if(opened) self.set_status(self.direct_error_status(err, 'Connection error'));
+            else retry(err);
         });
     },
     accept: function(conn) {
@@ -218,6 +367,7 @@ Multiplayer.prototype = {
             }
             conn.playerIndex = self.next_player_index();
             self.conns.push(conn);
+            self.start_route_diagnostics(conn);
             if(self.game.is_paused) self.game.set_player_count(self.conns.length + 1);
             self.send(conn, {
                 type: 'welcome',
@@ -245,6 +395,10 @@ Multiplayer.prototype = {
             for(var i=self.conns.length-1; i>=0; i--) {
                 if(self.conns[i] == conn) self.conns.splice(i, 1);
             }
+            if(self.routeDiagnosticConnection === conn) {
+                self.stop_route_diagnostics(conn);
+                if(self.conns.length) self.start_route_diagnostics(self.conns[0]);
+            }
             if(conn.playerIndex !== null && self.game.players[conn.playerIndex]) {
                 self.eliminate_player(conn.playerIndex, 'disconnected.');
             }
@@ -255,6 +409,8 @@ Multiplayer.prototype = {
     },
     close_existing_session: function() {
         this.sessionGeneration++;
+        this.stop_route_diagnostics();
+        this.guestConnectActive = false;
         if(this.hostConn && this.hostConn.close) this.hostConn.close();
         for(var i=0; i<this.conns.length; i++) {
             if(this.conns[i] && this.conns[i].close) this.conns[i].close();
